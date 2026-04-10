@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INVENTARY0S | Gestión de Inventario Profesional</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para Iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .low-stock { background-color: #fee2e2 !important; border-left: 4px solid #ef4444; }
+        .modal-active { display: flex !important; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Navegación -->
+    <nav class="bg-slate-900 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i class="fas fa-boxes-stacked text-blue-400"></i> INVENTARY0S
+            </h1>
+            <span class="text-sm text-slate-400">v1.0 - Panel de Administración</span>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 md:p-8">
+        
+        <!-- DASHBOARD CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 uppercase">Total Productos</p>
+                        <h3 id="stats-total-items" class="text-3xl font-bold">0</h3>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-lg text-blue-600">
+                        <i class="fas fa-box fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 uppercase">Bajo Stock (< 5)</p>
+                        <h3 id="stats-low-stock" class="text-3xl font-bold text-red-500">0</h3>
+                    </div>
+                    <div class="bg-red-100 p-3 rounded-lg text-red-600">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 uppercase">Valor Total</p>
+                        <h3 id="stats-total-value" class="text-3xl font-bold text-emerald-600">$0.00</h3>
+                    </div>
+                    <div class="bg-emerald-100 p-3 rounded-lg text-emerald-600">
+                        <i class="fas fa-dollar-sign fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACCIONES Y FILTROS -->
+        <div class="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
+            <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-3 text-slate-400"></i>
+                    <input type="text" id="search-input" placeholder="Buscar producto..." 
+                        class="pl-10 pr-4 py-2 w-full md:w-64 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                </div>
+                <select id="category-filter" class="px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="all">Todas las categorías</option>
+                    <option value="Electrónica">Electrónica</option>
+                    <option value="Hogar">Hogar</option>
+                    <option value="Ropa">Ropa</option>
+                    <option value="Alimentos">Alimentos</option>
+                    <option value="Otros">Otros</option>
+                </select>
+            </div>
+            <div class="flex gap-2 w-full md:w-auto">
+                <button onclick="toggleModal(true)" class="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-plus"></i> Nuevo Producto
+                </button>
+                <button onclick="exportToCSV()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium border border-slate-300 transition-colors">
+                    <i class="fas fa-file-export"></i> Exportar
+                </button>
+            </div>
+        </div>
+
+        <!-- TABLA DE PRODUCTOS -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 border-bottom border-slate-200">
+                        <tr>
+                            <th class="p-4 font-semibold text-slate-600 uppercase text-xs tracking-wider">Producto</th>
+                            <th class="p-4 font-semibold text-slate-600 uppercase text-xs tracking-wider">Categoría</th>
+                            <th class="p-4 font-semibold text-slate-600 uppercase text-xs tracking-wider text-center">Stock</th>
+                            <th class="p-4 font-semibold text-slate-600 uppercase text-xs tracking-wider">P. Compra</th>
+                            <th class="p-4 font-semibold text-slate-600 uppercase text-xs tracking-wider">P. Venta</th>
+                            <th class="p-4 font-semibold text-slate-600 uppercase text-xs tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-body" class="divide-y divide-slate-100">
+                        <!-- Las filas se generan con JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="empty-state" class="hidden p-8 text-center text-slate-500">
+                <i class="fas fa-box-open fa-3x mb-3 opacity-20"></i>
+                <p>No se encontraron productos en el inventario.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL FORMULARIO -->
+    <div id="product-modal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="bg-slate-900 p-4 text-white flex justify-between items-center">
+                <h2 id="modal-title" class="font-bold">Agregar Nuevo Producto</h2>
+                <button onclick="toggleModal(false)" class="hover:text-red-400"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="product-form" class="p-6 space-y-4">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre del Producto*</label>
+                    <input type="text" id="p-name" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
+                    <select id="p-category" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="Electrónica">Electrónica</option>
+                        <option value="Hogar">Hogar</option>
+                        <option value="Ropa">Ropa</option>
+                        <option value="Alimentos">Alimentos</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Cantidad*</label>
+                        <input type="number" id="p-qty" min="0" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">P. Compra</label>
+                        <input type="number" step="0.01" id="p-buy" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">P. Venta</label>
+                        <input type="number" step="0.01" id="p-sell" required class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div class="pt-4 flex gap-3">
+                    <button type="button" onclick="toggleModal(false)" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">Guardar Producto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- ESTADO DE LA APLICACIÓN ---
+        let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+        let editMode = false;
+
+        // --- SELECTORES ---
+        const inventoryBody = document.getElementById('inventory-body');
+        const productForm = document.getElementById('product-form');
+        const modal = document.getElementById('product-modal');
+        const searchInput = document.getElementById('search-input');
+        const categoryFilter = document.getElementById('category-filter');
+        const emptyState = document.getElementById('empty-state');
+
+        // --- FUNCIONES CORE ---
+
+        function init() {
+            renderTable();
+            updateStats();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('inventory', JSON.stringify(inventory));
+            updateStats();
+        }
+
+        function toggleModal(show, id = null) {
+            const title = document.getElementById('modal-title');
+            productForm.reset();
+            document.getElementById('edit-id').value = '';
+            
+            if (show) {
+                if (id) {
+                    editMode = true;
+                    title.innerText = "Editar Producto";
+                    fillForm(id);
+                } else {
+                    editMode = false;
+                    title.innerText = "Agregar Nuevo Producto";
+                }
+                modal.classList.add('modal-active');
+            } else {
+                modal.classList.remove('modal-active');
+            }
+        }
+
+        function fillForm(id) {
+            const item = inventory.find(p => p.id === id);
+            if (item) {
+                document.getElementById('edit-id').value = item.id;
+                document.getElementById('p-name').value = item.name;
+                document.getElementById('p-category').value = item.category;
+                document.getElementById('p-qty').value = item.qty;
+                document.getElementById('p-buy').value = item.buyPrice;
+                document.getElementById('p-sell').value = item.sellPrice;
+            }
+        }
+
+        // --- CRUD OPERATIONS ---
+
+        productForm.onsubmit = (e) => {
+            e.preventDefault();
+
+            const productData = {
+                id: document.getElementById('edit-id').value || Date.now().toString(),
+                name: document.getElementById('p-name').value,
+                category: document.getElementById('p-category').value,
+                qty: parseInt(document.getElementById('p-qty').value),
+                buyPrice: parseFloat(document.getElementById('p-buy').value),
+                sellPrice: parseFloat(document.getElementById('p-sell').value)
+            };
+
+            if (editMode) {
+                inventory = inventory.map(p => p.id === productData.id ? productData : p);
+            } else {
+                inventory.push(productData);
+            }
+
+            saveToStorage();
+            renderTable();
+            toggleModal(false);
+        };
+
+        function deleteProduct(id) {
+            if (confirm('¿Estás seguro de eliminar este producto?')) {
+                inventory = inventory.filter(p => p.id !== id);
+                saveToStorage();
+                renderTable();
+            }
+        }
+
+        // --- UI RENDERING ---
+
+        function updateStats() {
+            const totalItems = inventory.length;
+            const lowStock = inventory.filter(p => p.qty < 5).length;
+            const totalValue = inventory.reduce((acc, p) => acc + (p.qty * p.sellPrice), 0);
+
+            document.getElementById('stats-total-items').innerText = totalItems;
+            document.getElementById('stats-low-stock').innerText = lowStock;
+            document.getElementById('stats-total-value').innerText = `$${totalValue.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
+        }
+
+        function renderTable() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filterCat = categoryFilter.value;
+
+            const filteredInventory = inventory.filter(p => {
+                const matchesSearch = p.name.toLowerCase().includes(searchTerm);
+                const matchesCat = filterCat === 'all' || p.category === filterCat;
+                return matchesSearch && matchesCat;
+            });
+
+            inventoryBody.innerHTML = '';
+
+            if (filteredInventory.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filteredInventory.forEach(product => {
+                    const isLowStock = product.qty < 5;
+                    const row = document.createElement('tr');
+                    row.className = `hover:bg-slate-50 transition-colors ${isLowStock ? 'low-stock' : ''}`;
+                    
+                    row.innerHTML = `
+                        <td class="p-4 font-medium">${product.name}</td>
+                        <td class="p-4"><span class="px-2 py-1 bg-slate-100 rounded text-xs text-slate-600 font-semibold">${product.category}</span></td>
+                        <td class="p-4 text-center font-bold ${isLowStock ? 'text-red-600' : ''}">
+                            ${product.qty} ${isLowStock ? '<i class="fas fa-arrow-down ml-1 text-[10px]"></i>' : ''}
+                        </td>
+                        <td class="p-4 text-slate-500">$${product.buyPrice.toFixed(2)}</td>
+                        <td class="p-4 font-semibold text-slate-700">$${product.sellPrice.toFixed(2)}</td>
+                        <td class="p-4">
+                            <div class="flex gap-2">
+                                <button onclick="toggleModal(true, '${product.id}')" class="text-blue-600 hover:bg-blue-50 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="deleteProduct('${product.id}')" class="text-red-600 hover:bg-red-50 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    inventoryBody.appendChild(row);
+                });
+            }
+        }
+
+        // --- EXPORTACIÓN ---
+
+        function exportToCSV() {
+            if (inventory.length === 0) return alert("No hay datos para exportar");
+
+            const headers = ["Nombre", "Categoria", "Cantidad", "Precio Compra", "Precio Venta"];
+            const rows = inventory.map(p => [p.name, p.category, p.qty, p.buyPrice, p.sellPrice]);
+            
+            let csvContent = "data:text/csv;charset=utf-8," 
+                + headers.join(",") + "\n"
+                + rows.map(e => e.join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `inventario_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- EVENT LISTENERS ---
+        searchInput.addEventListener('input', renderTable);
+        categoryFilter.addEventListener('change', renderTable);
+
+        // Inicializar app
+        init();
+
+    </script>
+</body>
+</html>
